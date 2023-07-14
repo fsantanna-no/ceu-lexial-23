@@ -8,8 +8,9 @@
 \usepackage{xspace}
 \newcommand{\code}[1] {\texttt{\footnotesize{#1}}}
 
-\title{
+\title {
     Dynamic Allocation with Lexical Memory Management
+    % under Structured Programming
 }
 
 \author{Anonymous}
@@ -26,6 +27,78 @@
 %\end{resumo}
 
 \section{Introduction}
+
+In
+
+hierarchy
+control flow
+memory
+program lexical structure
+
+constructs of selection (if/then/else) and repetition (while and for), block structures, and subroutines.
+
+not dynamic
+
+
+
+In particular, the concept of blocks
+
+
+- philosophy of structured programming
+    - blocks, locals, auto-vars
+    - break vs exceptions
+        - break linked to specific loop
+            - cannot move across loop/func
+        - exception linked to idea no catch
+            - can move across catch/func
+    - reasoning
+- problem with heap
+    - references
+    - escapes
+    - reasoning breaks
+- state of the art
+    - move semantics
+    - but no sharing
+    - cyclone, rust
+        - problem of callbacks
+            - still holds for this work
+- Ceu
+    - restore reasoning
+    - tuple, vector, dict
+    - func, upval, noupval
+    - loops, no break
+    - throw/catch
+    - defer
+    - drop semantics
+- Tradeoff
+    - memory cost
+    - runtime cost
+    - still requires GC
+    - single ref
+
+ y second remark is that our intellectual powers are rather
+geared to master static relations and that our powers to visualize
+processes evolving in time are relatively poorly developed. For
+that reason w e should do (as wise programmers aware of our
+limitations) our utmost to shorten the conceptual gap between
+the static program and the dynamic process, to m a k e the cor-
+respondence between the program (spread out in text space) and
+the process (spread out in time) as trivial as possible.
+
+currently two alternatives:
+    - malloc/free
+    - GC
+    - ownership semantics
+        - move, borrow
+            - implicit
+        - Each value in Rust has an owner.
+        - There can only be one owner at a time.
+        - When the owner goes out of scope, the value will be dropped.
+
+none enforced by the lexical structure
+
+
+
 \label{sec.introduction}
 
 \bibliographystyle{abbrv}

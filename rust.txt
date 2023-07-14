@@ -1,0 +1,367 @@
+- env_type_ishasptr
+    - env_held_vars
+        - x.Fx!
+        - x.1
+    - check_owner (access after tx):
+            x env_type_isrecptr
+    - check_txs (root tx)
+        x env_type_isrecptr
+    - code (check if dst==NULL before grow
+        x env_type_isrecptr
+    - check_ptrs
+        - cannot hold pointer
+        - deepest
+- isptr
+    - nao posso pegar ponteiro para meio de isptr sem que fique claro que ele é um isptr
+        - isso faria eu trata-lo como um nao isptr e eu poderia quebrar semantica de growable
+    - isptr vs isrecptr
+
+- tratar arg como tupla especial que pode ser movida parcialmente
+    - adicionar indice em TX
+        - 0: tudo
+        - x: parcial (somente arg suporta)
+- nao posso guardar ptrs que nao sejam ciclos em dyn values pq eles movem de
+  escopo
+    - na verdade, só posso guardar ptrs em chamadas de fcs
+        - pq nao?
+    - ou variaveis locais
+
+- ponteiros sao uteis para:
+    - passar argumentos por referencia
+        - para valor ser alterado (\Int)
+        - para nao fazer move
+    - acesso tmp a caminho longo
+    - guardar links dentro de structs (tipicamente ptr para isrec)
+- rejeitar:
+    - guardar ptrs em tipos compostos se nao for link interno
+
+- "invalid ownership transfer : mode `growable´ only allows root transfers"
+    - TODO: growable -> append-only
+    - tem que ver que em alguns casos é impossível deixar dangling pointer e aceitar:
+        - move ret.Some_Stmt!
+
+- "invalid assignment : cannot hold pointer in \"arg\" : unkown scope"
+    - should actually set expected scopes of arg.1, arg.2 and check if calls
+      respect it
+- dar erro na transf. de ponteiros do arg. ver onde compliador em ce0 vai falhar
+    - recusar arg.x = arg.y para ponteiros
+        - depois, caso seja necessario, vou ter que expor nos attrs da funcao
+          qual guarda qual. essa ordem vai precisar ser mantida na chamada
+- os ponteiros que escapam escopo devem ser recusados:
+    - buscar "ordered from outer..." para ver usos sendo evitados/aceitos
+    - marcar os holds transitivamente: borrows, copies e moves
+        - se funcao retorna ishasptr e recebe ptr, entao assume que call guarda argumentos ptr
+    - permitir ciclos
+    - permitir funcoes guardarem arg, problema vai pra call fora
+
+- documentar
+    - append-only vs movable
+    - tuplas com ponteiros em ordem de escopo
+    - ciclos: prefixos, ptr vs rec, transfer to root
+    - force move prefix (vs clone)
+    - ptrs ptr_deepest
+    - function pointers
+- ver se preciso mesmo guardar ponteiros que nao sejam da propria arvore
+- isso eliminaria tuplas ordenadas por escopo?
+
+- growable é necessário?
+    - listas append pointer
+    - back links na arvore
+
+- growable nao pode ser atribuido no meio
+
+- append de tests.ce
+    - problema: nao consigo criar uma funcao, pois a mesma precisa guardar 2x
+      ponteiros que sao inicialmente nao relacionados dentro do "arg" que passa
+      a relaciona-los
+        - se os tipos forem independentes, poderia ser detectado
+- growable
+    - runtime verification
+        - exemplo com ponteiro na arvore, ex., lista + tail
+        - ver situacoes em que check nao é necessário
+
+- ulimit -Sv 500000
+- DOC
+    - se nao tem ponteiro, entao nao é growable
+    - doc das tuplas + ptrs
+- lifetimes pela ordem dos parametros:
+    - // TODO-TUPLE-HOLD
+    - call out to_c (arg.1, \tp)
+    - func env: (\Env,\Stmt) -> ()
+        - posso guardar em \Stmt algo de \Env
+            - sei que sao growable e sei que \Env >= \Stmt
+
+- \ -> share
+- qd nao for isrec, chamar clone automaticamente
+    - caso do percorrimento do env
+
+- aloca e nao desaloca pois exige tmp que chama fc alocadora 2x:
+    - return (env_id_to_type (arg.1,id)).Some_Type!
+
+- None_Sub is not part of Maybe_Type
+    var tp: Maybe_Type = call parser_type ()
+    if tp.None_Sub? {
+- C error: few operators to parser_stmts (it receives TK_enu)
+    var s: Maybe_Stmt = call parser_stmts ()
+
+- TODO-deep-ptr
+
+- comparison with rust
+- vector index, modules, asptr/asnat, elseif
+    - traverse/visit/iterate/walk urgente
+    - set x = y, where y=b, b=10
+    - set x = y, if y>10
+    - return () in unit funcs
+    - collections:
+        - <hash>
+        - {linked}
+        - [vector]
+- as
+    - call output Draw Text ((0,5), _("Hello!") as _(char*))
+- defer
+- unificar op2
+- preciso mesmo de Stmt.tk ??
+- cpp
+- traverse / vector / string
+- posso passar uma REF onde espero um plain
+- ambiguidade:
+    - call/output/input: funcao tem que ser TX_VAR no parser
+        - output std \x
+        - output std\ x
+- voltar para book
+    - programar um pouco mais
+    - trabalhar com desugar
+    - quanto estiver confortavel, voltar pro sugar
+    - ler sobre lifetimes
+
+- descobri as diferencas
+    1. ce nao tem foco em mut: concorrencia/write-while-reading/iterator
+        - problema ortogonal
+    2. ADTs em rust sao ruins
+    3. Rust nao consegue mover partes de estruturas recursivas
+        - var z: (Nat,Nat) = ...
+        - var x: Nat = z.1          -- z.1=$
+        - isso por conta do set auto nil
+    x. keyword move
+    4. Ce terá pools (pool xs[]:Nat ; var x:Nat in xs = ...)
+        4.1 Limita escopo da memória
+            - o sistema de ownership não respeita escopo mínimo, sempre posso retornar.
+            - confusão com entendimento da memória em determinado momento
+            - ter um ponteiro único nao ajuda necessariamente a entender
+        4.2 Permite bounded pool
+    X. Conseguiria guardar ponteiros na raiz da struct que quando houver qq free,
+       eu percorro a raiz e elimino o ptr
+    5. Growable. Só posso escrever em subarvores vazias, nunca substituir um no e remover
+       a sua subarvore. Isso iria delasalocar nós com ponteiros pendentes.
+       A verificação é em runtime, feito na atribuicao. Só pode ser assim pois
+       ponteiros que já foram extremidades deixam de ser assim que há uma attr
+        - agora vou poder ter ponteiros guardados na propria árvore ou até mesmo
+          fora em escopos menores ou iguais
+    - tipos de recs:
+        - immutable
+            - nao precisa de clone (pode share os nós sem move)
+        - mutable
+            - growable
+                - pode guardar ponteiros
+            - movable
+                - pode mover sub arvores
+                  (transfer ownership of subtree)
+    - empty value:
+        - movable: o teste do grow é deito em cima do valor empty
+        - mutable: o valor original após o move vira o empty
+
+- closures explicitas precisa de new+ref para tuplas
+
+- POOLS
+    - testar nao caber no pool
+    - id()
+        func f: () -> Nat {
+            var x: Nat = ...
+            return id(x)    -- does not return x, but pass x to id which might return it
+        }                   -- solution is to make x also go to the pool
+        var x[] = f()
+    - can't return tuples w/ multiple rec types
+    -- TODO-1: warning minor issue
+
+- RECS
+    - remover keyword rec?
+    - f : () -> (Nat,List)
+    - x[]: (Nat,List) = f()
+        - funcao retornar dois recs
+        - mas o retorno tem que ser uma variavel só que em teoria teria que guardar os dois recs no mesmo pool?
+
+- MINOR
+    - subtypes
+        - var x: True = True
+    - https://www.google.com/search?q=same-fringe+problem
+        - https://www.lua.org/doc/jai2009.pdf
+    - named tuples (struct/record) (Int,Int) --> (x:Int,y:Int)
+        - type Expr: (n:Int,env:Env) {
+            Tuple: (size:Int, vec:[Expr])
+            Stmt: (...)
+          }
+    - input function polymorphic
+    - resolver -Wno-format-zero-length
+    - funcoes as values (now we have ENV:var,func,type)
+    - funcoes recursivas
+        - special rec syntax
+        - change env before body
+    - type names must contain lowercase (error in C generation upper/lower)
+    - output/input for strings, output_type/input_type for users
+    - repl
+        - prevent side effect of expr to be lost:
+            - _1 = exp ; output(_1);
+        - >>> if not finished
+    - Exceptions:
+        - https://www.programmersought.com/article/404520682/
+        - https://www.usenix.org/legacy/publications/library/proceedings/sa92/moen.pdf
+
+- Ce0
+    - implemented in C
+    - simplest possible
+    - immutable
+- Ce
+    - implemented in Ce0
+    - mutable
+    - type inference
+    - pattern matching
+    - lambdas
+    - synchronous concurrency
+
+1. scope of &x <= x
+2. not both at the same time:
+    - one or more references (&T) to a resource
+    - exactly one mutable reference (&mut T)
+
+void *heap_locations;
+void *stack_location;
+
+void determine_locations (int any_int) {
+   free(heap_location = malloc(248));
+   stack_location = &any_int;
+}
+
+int main(int argc, char *argv[]) {
+  determine_locations(argc);
+      .
+      .
+      .
+  return 0;
+}
+
+<!--
+- full previous
+
+
+var y[]: Nat = Succ(f())
+
+- further examples: add inside, add outside
+```
+func f: () -> Nat {
+    var x: Nat = Succ(Succ(Nil))
+    var y: Nat = Succ(Succ(Nil))
+    var z: Nat = add(x,y)
+    return z
+}
+var y[]: Nat = f()
+```
+```
+func f: () -> Nat {
+    var x: Nat = Succ(Succ(Nil))
+    var y: Nat = Succ(Succ(Nil))
+    var z: Nat = add(x,y)
+    return z
+}
+var y[]: Nat = add(two,f())
+```
+-->
+
+-- DINAMICO detectar quando ponteiros nao sao retornados e assim desalocar sua arvore na saida
+
+func max: (Nat,Nat) -> Nat {
+    -- arg e x e y sao gordos, todos com bit desligado
+    var x: Nat = arg.1  -- no cleanup eu testo o bit e desaloco geral se tiver desligado
+    var y: Nat = arg.2
+    if x > y {
+        return x        -- x+1 (liga bit)
+    } else {
+        return y        -- y+1 (liga bit)
+    }
+}
+
+x = max(2,3)    -- 2 e 3 ficam temporariamente, um dos dois nao vai ter refcount
+    -- guardar ponteiros locais como gordos com refcounts, na hora de sair do escopo, apaga o que for necessario
+
+-- o cleanpup tem que ser só na referencia com o escopo mais externo que contem o valor
+-- no caso acima, o 2/3 estariam guardados no arg
+
+a = 2
+b = 3
+x = max(a,b)    -- nesse caso seria a/b
+ou seja, as referencias gordas fortes sao aquelas que tem pelo menos 1 construtor!!!
+
+se é uma atribuicao, entao a ref forte é a variável
+se não é uma atribuicao, entao a ref forte é "arg"
+
+struct REC_Cons {
+    bool returned = 0;  // did not return ultimately // 1 when actually returned (return sets all)
+    void* var;          // pointer to actual value
+}
+REC_ALIAS is pointer to REC_CONS
+    - I know it is weak so I deref
+
+c = Succ(b)     -- agora C e B tem que ser testados ao sair, se ambos = 0, entao pode desalocar o B
+                -- ou seja vu precisar de uma lista p/ cada REC_CONS com outras REC_CONSs que ela aponta
+
+// Also mark all REC_CONS references, which are those with EXPR_CONS.
+//  - REC_CONS  escape and is root of some constructor
+//  - REC_ALIAS escape but is not root of some constructor, instead they point to REC_CONS
+
+vou precisar de refcount
+
+1. detectar todos EXPR_VAR atingíveis por STMT_RET
+    - os outros não precisa se preocupar, pois vão ser desalocados com os pools locais saindo de escopo
+        - TODO: como nao desalocar mallocs mais externos em um pool local?
+            - var x[]: Nat = Succ(a)    -- a é uma local retornada
+            - return a
+            - esse codigo tem que ser recusado
+                - se "a" é alocado com malloc (com pool_alloc nao tem problema pq consigo detectar o pool original)
+                - sao dois mallocs para raizes diferentes
+                    - a partir das raizes, nao teria como diferenciar se estao ou nao em outra raiz
+                    - entao tenho que recusar
+                    - nao posso nunca compartilhar referencias que moram em pools de malloc
+                        - precisa copiar
+                        - funcao copy especial
+2. para cada um deles X
+    - verificar se tem um construtor em INIT
+        - se nao tem, ignora esse
+    - se tem, ele é REC_CONS
+        1. antes do return tem que setar bit=1
+        - olhar o INIT e pegar todos os EXPR_VAR Y recursivamente com passo 2
+        2. esse X tem que ir pra lista do Y
+3. detectar todos os STMT_VAR que tem construtor em INIT
+    - para cada um deles Y
+        - fazer um cleanup que percorre a sua lista de Xs que me acessam Y
+            - se todos estao com bit=0, entao posso desalocar a minha arvore
+
+var x[]         -- REC_POOL  esse nao precisa ser testado, nao se mistura
+var y = p       -- REC_ALIAS esses dois preciso testar dinamicamente
+var z = Cons    -- REC_CONS  eles se misturam na situacao acima
+
+
+-- uma outra alternativa seria GC na saida de cada funcao:
+    - percorrer a arvore inteira a partir da raiz
+
+-- TODO-1
+-- ESTATICO: detectar qd pool é declarado mas valores nao vao pra ele:
+var x[]: Nat = three    -- aqui é uma global declarada em escopo maior
+                        -- na verdade isso nao é um erro, a alocacao nao vai acontecer
+                        -- poderia ser um warning pois *so* temos coisas desnecessarias
+
+-- ERR
+func f: () -> Nat {
+    var x[]: Nat = Nil  -- (ln 5, col 9): invalid pool : data returns
+    return x
+}
+
+
