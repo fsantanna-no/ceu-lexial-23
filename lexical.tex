@@ -44,89 +44,77 @@ and local variables that use the static and stack memory regions to hold
 fixed-size data types, and also provides references to dynamically-allocated
 objects that use the heap to hold variable-size data types.
 %
-Note that the static and stack regions provide automatic memory management that
-are easy to reason, since they deallocate memory in blocks that respect the
-lexical structure of the program.
+The static and stack regions provide automatic memory management that are easy
+to reason, since they deallocate memory in blocks that respect the lexical
+structure of the program.
 %
 However, the life cycle of objects that live in the heap have no correspondence
 with the program structure, which diverges from the basic principle of
 structured programming.
+%
+Nevertheless, the heap is essential to express resizable structures, such as
+vectors and graphs, and also to move them to outer scopes.
 
 To deal with the mismatch between life cycle of objects in the heap against the
-lexical structure of programs, programming languages need to offer extra
-mechanisms to manage the heap.
+lexical structure of programs, programming languages offer extra mechanisms to
+manage the heap.
 %
 For instance, low-level languages, such as \emph{C} and \emph{Zig}, rely on
 explicit deallocation primitives, while higher-level languages, such as
 \emph{Python} and \emph{Java}, rely on automatic garbage collection to
 deallocate memory.
+
+More sophisticated type systems manage to reconcile heap deallocation with the
+program structure.
 %
-More sophisticated approaches such as region-based memory from Cyclone and
-ownership system of Rust restores the xxx to some extent
-
-In particular, the ownership semantics
-
-
-
-
- that use the stack with automatic
-deallocation in blocks, which correspond to .
+\emph{Cyclone}~\cite{TODO} supports lexical regions that are attached to
+blocks, and behave like local heaps.
+Objects can be dynamically allocated into a region, which is deallocated as a
+whole with all objects when its enclosing block terminates.
+The type system of Cyclone ensures that no references can escape the scope of
+regions to prevent dangling references.
 %
-Stack...
-However, dynamically
+\emph{Rust}~\cite{TODO} is based on the ownership semantics in which objects
+in the heap can only have a unique owner reference, but multiple borrowed
+references.
+When the owner goes out of scope, the object in the heap is automatically
+deallocated.
+The type system of Rust also ensures that no borrowed references can escape the
+owner scope.
+%
+These approaches enforce safety at compile time and have minimum runtime costs
+(akin to explicit deallocation primitives).
+Nevertheless, they impose significant restrictions on the expressiveness of the
+languages.
+For instance, objects in Cyclone can share ownership, but not move between
+scopes, while objects in Rust can move between scopes, but not share ownership.
+
+In this work, we explore
+- dynamic language
+- significant memory and runtime costs
 
 
 
-and lifetime, which not only control flow, but also memory
 
-- sometimes factory
-- sometimes just local regrowth
-    - vectors, lists, arbitrary graphs
+stack deallocation)
+However, even though these approaches are safe 
+
+
+Patina: A Formalization of the Rust Programming Language
+https://pling.jondgoodwin.com/post/cyclone/
 
 - webserver, across multiple requests, stack ripping
     - even if fixed size, still requires the heap
 
-
-
-
-develop algo programs.
-%
-This hierarchical organization helps on
-    breaking into parts
-    moving
-    reasoning
-
-
-It relies on the nested 
-
-In
-
-hierarchy
-control flow
-memory
-program lexical structure
-
-constructs of selection (if/then/else) and repetition (while and for), block structures, and subroutines.
-
-not dynamic
-
-
-
-In particular, the concept of blocks
-
-
 - philosophy of structured programming
-    - blocks, locals, auto-vars
     - break vs exceptions
         - break linked to specific loop
             - cannot move across loop/func
         - exception linked to idea no catch
             - can move across catch/func
-    - reasoning
 - problem with heap
     - references
     - escapes
-    - reasoning breaks
 - state of the art
     - move semantics
     - but no sharing

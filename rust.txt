@@ -43,3 +43,7 @@ Rust = Ceu
     - empty value:
         - movable: o teste do grow é deito em cima do valor empty
         - mutable: o valor original após o move vira o empty
+
+https://radekvit.medium.com/move-semantics-in-c-and-rust-the-case-for-destructive-moves-d816891c354b
+
+The reason why bit copies are always enough for a move operation in Rust is that Rust does not support self-referential structs in its safe subset. The borrowing rules in Rust make it impossible for a struct to borrow from its own fields (unless you reach for raw pointers and unsafe). Such structs would require their move operations to adjust these references after moving the resources from the original object, but without them, there is no real need to execute arbitrary code on moves.
