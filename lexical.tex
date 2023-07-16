@@ -28,6 +28,77 @@
 
 \section{Introduction}
 
+The classical structured programming paradigm determines the control flow of
+programs based on the lexical hierarchical structure of the source code.
+%
+In principle, programmers rely on the textual nesting of sequences,
+conditionals, loops, and subroutines to break the source code into blocks to
+better organize and reason about the program.~\cite{TODO}
+%
+Lexical blocks also determine the scope of variables, limiting their visibility
+and lifetime, which helps to reason, not only about control flow, but also
+about the memory organization of programs.
+
+Regarding memory management, structured programming typically provides global
+and local variables that use the static and stack memory regions to hold
+fixed-size data types, and also provides references to dynamically-allocated
+objects that use the heap to hold variable-size data types.
+%
+Note that the static and stack regions provide automatic memory management that
+are easy to reason, since they deallocate memory in blocks that respect the
+lexical structure of the program.
+%
+However, the life cycle of objects that live in the heap have no correspondence
+with the program structure, which diverges from the basic principle of
+structured programming.
+
+To deal with the mismatch between life cycle of objects in the heap against the
+lexical structure of programs, programming languages need to offer extra
+mechanisms to manage the heap.
+%
+For instance, low-level languages, such as \emph{C} and \emph{Zig}, rely on
+explicit deallocation primitives, while higher-level languages, such as
+\emph{Python} and \emph{Java}, rely on automatic garbage collection to
+deallocate memory.
+%
+More sophisticated approaches such as region-based memory from Cyclone and
+ownership system of Rust restores the xxx to some extent
+
+In particular, the ownership semantics
+
+
+
+
+ that use the stack with automatic
+deallocation in blocks, which correspond to .
+%
+Stack...
+However, dynamically
+
+
+
+and lifetime, which not only control flow, but also memory
+
+- sometimes factory
+- sometimes just local regrowth
+    - vectors, lists, arbitrary graphs
+
+- webserver, across multiple requests, stack ripping
+    - even if fixed size, still requires the heap
+
+
+
+
+develop algo programs.
+%
+This hierarchical organization helps on
+    breaking into parts
+    moving
+    reasoning
+
+
+It relies on the nested 
+
 In
 
 hierarchy
