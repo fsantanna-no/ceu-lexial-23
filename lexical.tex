@@ -7,9 +7,10 @@
 \usepackage{verbatim}
 \usepackage{xspace}
 \newcommand{\code}[1] {\texttt{\footnotesize{#1}}}
+\newcommand{\lex} {\code{dyn-lex}\xspace}
 
 \title {
-    Dynamic Allocation with Lexical Memory Management
+    Dynamic Allocation with Runtime Lexical Memory Management
     % under Structured Programming
 }
 
@@ -27,13 +28,14 @@
 %\end{resumo}
 
 \section{Introduction}
+\label{sec.intro}
 
 The classical structured programming paradigm determines the control flow of
 programs based on the lexical hierarchical structure of the source code.
 %
 In principle, programmers rely on the textual nesting of sequences,
 conditionals, loops, and subroutines to break the source code into blocks to
-better organize and reason about the program.~\cite{TODO}
+better organize and reason about the program~\cite{TODO}.
 %
 Lexical blocks also determine the scope of variables, limiting their visibility
 and lifetime, which helps to reason, not only about control flow, but also
@@ -42,41 +44,38 @@ about the memory organization of programs.
 Regarding memory management, structured programming typically provides global
 and local variables that use the static and stack memory regions to hold
 fixed-size data types, and also provides references to dynamically-allocated
-objects that use the heap to hold variable-size data types.
+values (or objects) that use the heap to hold variable-size data types.
 %
 The static and stack regions provide automatic memory management that are easy
 to reason, since they deallocate memory in blocks that respect the lexical
 structure of the program.
 %
-However, the life cycle of objects that live in the heap have no correspondence
-with the program structure, which diverges from the basic principle of
-structured programming.
+However, the life cycle of objects have no correspondence with the program
+structure, which diverges from the basic principle of structured programming.
 %
 Nevertheless, the heap is essential to express resizable structures, such as
 vectors and graphs, and also to move them to outer scopes.
 
-To deal with the mismatch between life cycle of objects in the heap against the
-lexical structure of programs, programming languages offer extra mechanisms to
-manage the heap.
+To deal with the mismatch between life cycle of objects against the lexical
+structure of programs, programming languages offer extra mechanisms to manage
+the heap.
 %
-For instance, low-level languages, such as \emph{C} and \emph{Zig}, rely on
-explicit deallocation primitives, while higher-level languages, such as
-\emph{Python} and \emph{Java}, rely on automatic garbage collection to
-deallocate memory.
+For instance, low-level languages, such as C and Zig, rely on explicit
+deallocation primitives, while higher-level languages, such as Python and Java,
+rely on automatic garbage collection to deallocate memory.
 
 More sophisticated type systems manage to reconcile heap deallocation with the
 program structure.
 %
-\emph{Cyclone}~\cite{TODO} supports lexical regions that are attached to
-blocks, and behave like local heaps.
-Objects can be dynamically allocated into a region, which is deallocated as a
+Cyclone~\cite{TODO} supports lexical regions that are attached to blocks, and
+behave like local heaps.
+An object can be dynamically allocated into a region, which is deallocated as a
 whole with all objects when its enclosing block terminates.
 The type system of Cyclone ensures that no references can escape the scope of
 regions to prevent dangling references.
 %
-\emph{Rust}~\cite{TODO} is based on the ownership semantics in which objects
-in the heap can only have a unique owner reference, but multiple borrowed
-references.
+Rust~\cite{TODO} is based on the ownership semantics in which objects can only
+have a unique owner reference, but multiple borrowed references.
 When the owner goes out of scope, the object in the heap is automatically
 deallocated.
 The type system of Rust also ensures that no borrowed references can escape the
@@ -86,19 +85,43 @@ These approaches enforce safety at compile time and have minimum runtime costs
 (akin to explicit deallocation primitives).
 Nevertheless, they impose significant restrictions on the expressiveness of the
 languages.
-For instance, objects in Cyclone can share ownership, but not move between
-scopes, while objects in Rust can move between scopes, but not share ownership.
+For instance, objects in Cyclone can be shared freely, but cannot move between
+scopes, while objects in Rust can safely move between scopes, but cannot share
+ownership.
 
-In this work, we explore
-- dynamic language
-- significant memory and runtime costs
+In this work, we explore the design of \lex a dynamic language with safe
+lexical memory management for heap-allocated objects.
+%
+Objects are subject to the following rules:
+    (a) they are always attached to exactly one block at any given time;
+    (c) they are automatically released from memory when their holding blocks
+        terminate;
+    (d) they can be shared freely in equal or deeper scopes;
+    (e) they can be explicitly moved to outer scopes, but remain attached to a
+        single block;
+%
+In \lex, it is possible to express arbitrary cyclic graphs with nodes residing
+at different blocks, while also moving them between scopes.
+%
+However, like dynamic typing, all scope checks to enforce safety happen at
+runtime, which incur in significant space and time overhead.
+Nevertheless, our hypothesis is that like dynamic typing, it may be worth to
+pay these costs to improve expressiveness.
 
+In addition to standard structured mechanisms, \lex supports dynamic data
+structures (tuples, vectors, and dictionaries), exceptions, deferred
+expressions, and a limited form of closures.
+%
+A garbage collector is still required to manage long-lasting blocks that create
+too many objects.
+%
+TODO: costs mem (tp,block,nxt), run (all assigns)
 
+\begin{comment}
+>>> string=32 | udata=56 | udata=40 | proto=128
+>>> upval=40 | table=56 | closure=48
 
-
-stack deallocation)
-However, even though these approaches are safe 
-
+>>> tuple=56, vector=72, dict=64, clos=80
 
 Patina: A Formalization of the Rust Programming Language
 https://pling.jondgoodwin.com/post/cyclone/
@@ -106,12 +129,6 @@ https://pling.jondgoodwin.com/post/cyclone/
 - webserver, across multiple requests, stack ripping
     - even if fixed size, still requires the heap
 
-- philosophy of structured programming
-    - break vs exceptions
-        - break linked to specific loop
-            - cannot move across loop/func
-        - exception linked to idea no catch
-            - can move across catch/func
 - problem with heap
     - references
     - escapes
@@ -123,11 +140,7 @@ https://pling.jondgoodwin.com/post/cyclone/
             - still holds for this work
 - Ceu
     - restore reasoning
-    - tuple, vector, dict
     - func, upval, noupval
-    - loops, no break
-    - throw/catch
-    - defer
     - drop semantics
 - Tradeoff
     - memory cost
@@ -155,10 +168,7 @@ currently two alternatives:
         - When the owner goes out of scope, the value will be dropped.
 
 none enforced by the lexical structure
-
-
-
-\label{sec.introduction}
+\end{comment}
 
 \bibliographystyle{abbrv}
 \bibliography{lexical}
