@@ -92,6 +92,12 @@ ownership.
 In this work, we explore the design of \lex a dynamic language with safe
 lexical memory management for heap-allocated objects.
 %
+In addition to standard structured mechanisms, \lex supports dynamic data
+structures (tuples, vectors, and dictionaries), exceptions, deferred
+expressions, and a limited form of closures.
+A garbage collector is still required to manage long-lasting blocks that create
+too many objects.
+%
 Objects are subject to the following rules:
     (a) they are always attached to exactly one block at any given time;
     (c) they are automatically released from memory when their holding blocks
@@ -108,20 +114,19 @@ runtime, which incur in significant space and time overhead.
 Nevertheless, our hypothesis is that like dynamic typing, it may be worth to
 pay these costs to improve expressiveness.
 
-In addition to standard structured mechanisms, \lex supports dynamic data
-structures (tuples, vectors, and dictionaries), exceptions, deferred
-expressions, and a limited form of closures.
-%
-A garbage collector is still required to manage long-lasting blocks that create
-too many objects.
-%
-TODO: costs mem (tp,block,nxt), run (all assigns)
+TODO: costs and results
 
 \begin{comment}
 >>> string=32 | udata=56 | udata=40 | proto=128
 >>> upval=40 | table=56 | closure=48
 
 >>> tuple=56, vector=72, dict=64, clos=80
+
+costs mem
+    - hold = (tp,block,nxt)
+    - _var_
+costs run
+    - all assigns
 
 Patina: A Formalization of the Rust Programming Language
 https://pling.jondgoodwin.com/post/cyclone/
