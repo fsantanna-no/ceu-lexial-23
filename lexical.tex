@@ -7,7 +7,7 @@
 \usepackage{verbatim}
 \usepackage{xspace}
 \newcommand{\code}[1] {\texttt{\footnotesize{#1}}}
-\newcommand{\lex} {\code{dyn-lex}\xspace}
+\newcommand{\lex} {\texttt{Dyn-Lex}\xspace}
 
 \title {
     Dynamic Allocation with Runtime Lexical Memory Management
@@ -30,91 +30,98 @@
 \section{Introduction}
 \label{sec.intro}
 
-The classical structured programming paradigm determines the control flow of
-programs based on the lexical hierarchical structure of the source code.
+In structured programming, the control flow of programs is determined by the
+hierarchical structure of the source code with sequences, conditionals, loops,
+and subroutines.
 %
-In principle, programmers rely on the textual nesting of sequences,
-conditionals, loops, and subroutines to break the source code into blocks to
-better organize and reason about the program~\cite{TODO}.
+In principle, programmers rely on the lexical nesting of such commands in
+blocks to better organize and reason about the
+program~\cite{dijk.goto,dijk.notes}.
 %
 Lexical blocks also determine the scope of variables, limiting their visibility
 and lifetime, which helps to reason, not only about control flow, but also
 about the memory organization of programs.
 
-Regarding memory management, structured programming typically provides global
-and local variables that use the static and stack memory regions to hold
-fixed-size data types, and also provides references to dynamically-allocated
-values (or objects) that use the heap to hold variable-size data types.
+Regarding memory management, structured programming typically provides local
+variables that use the stack to hold fixed-size data types, and references to
+dynamically-allocated values (or objects) that use the heap to hold
+variable-size data types.
 %
-The static and stack regions provide automatic memory management that are easy
-to reason, since they deallocate memory in blocks that respect the lexical
-structure of the program.
+The stack provides automatic memory management that is easy to reason, since it
+deallocates memory in blocks that respect the lexical structure of the program.
 %
-However, the life cycle of objects have no correspondence with the program
-structure, which diverges from the basic principle of structured programming.
+However, the life cycle of objects have no correspondence with the lexical
+structure, diverging from the basic principle of structured programming.
 %
 Nevertheless, the heap is essential to express resizable structures, such as
-vectors and graphs, and also to move them to outer scopes.
+vectors and graphs, and is also a requirement to move objects between scopes.
 
-To deal with the mismatch between life cycle of objects against the lexical
+To deal with the mismatch between the life cycle of objects against the lexical
 structure of programs, programming languages offer extra mechanisms to manage
 the heap.
 %
-For instance, low-level languages, such as C and Zig, rely on explicit
-deallocation primitives, while higher-level languages, such as Python and Java,
-rely on automatic garbage collection to deallocate memory.
+For instance, lower-level languages, such as C and Zig, rely on explicit
+allocation primitives, while higher-level languages, such as Python and Java,
+rely on garbage collectors.
 
-More sophisticated type systems manage to reconcile heap deallocation with the
+More sophisticated type systems can reconcile heap deallocation with the
 program structure.
 %
-Cyclone~\cite{TODO} supports lexical regions that are attached to blocks, and
-behave like local heaps.
-An object can be dynamically allocated into a region, which is deallocated as a
-whole with all objects when its enclosing block terminates.
-The type system of Cyclone ensures that no references can escape the scope of
-regions to prevent dangling references.
+In Cyclone~\cite{cyclone.regions}, lexical regions behave like local heaps that
+are attached to blocks.
+An object is explicitly allocated into a region, which is deallocated as a
+whole with all containing objects when its enclosing block terminates.
 %
-Rust~\cite{TODO} is based on the ownership semantics in which objects can only
-have a unique owner reference, but multiple borrowed references.
-When the owner goes out of scope, the object in the heap is automatically
-deallocated.
-The type system of Rust also ensures that no borrowed references can escape the
-owner scope.
+In Rust~\cite{rust.book}, objects are owned by a unique lexical reference.
+When the owner goes out of scope, the object is automatically deallocated.
 %
-These approaches enforce safety at compile time and have minimum runtime costs
-(akin to explicit deallocation primitives).
-Nevertheless, they impose significant restrictions on the expressiveness of the
-languages.
+The type systems of Cyclone and Rust ensure that no references can escape the
+owning lexical scope, providing compile-time safety with minimum runtime
+costs.
+%
+Nevertheless, they impose restrictions on the expressiveness of the languages.
 For instance, objects in Cyclone can be shared freely, but cannot move between
 scopes, while objects in Rust can safely move between scopes, but cannot share
 ownership.
 
-In this work, we explore the design of \lex a dynamic language with safe
+In this work, we explore the design of \lex, a dynamic language with runtime
 lexical memory management for heap-allocated objects.
 %
-In addition to standard structured mechanisms, \lex supports dynamic data
-structures (tuples, vectors, and dictionaries), exceptions, deferred
-expressions, and a limited form of closures.
+Objects in \lex have the following characteristics:
+    (a) they are always attached to exactly one block;
+    (c) they are automatically released from memory with their holding blocks;
+    (d) they can be shared freely, except to outer scopes;
+    (e) they can be explicitly moved to outer scopes.
+%
+Therefore, \lex can express arbitrary cyclic graphs with nodes residing at
+different blocks, and move them between scopes when appropriate.
 A garbage collector is still required to manage long-lasting blocks that create
 too many objects.
 %
-Objects are subject to the following rules:
-    (a) they are always attached to exactly one block at any given time;
-    (c) they are automatically released from memory when their holding blocks
-        terminate;
-    (d) they can be shared freely in equal or deeper scopes;
-    (e) they can be explicitly moved to outer scopes, but remain attached to a
-        single block;
-%
-In \lex, it is possible to express arbitrary cyclic graphs with nodes residing
-at different blocks, while also moving them between scopes.
-%
-However, like dynamic typing, all scope checks to enforce safety happen at
-runtime, which incur in significant space and time overhead.
-Nevertheless, our hypothesis is that like dynamic typing, it may be worth to
+However, like dynamic typing, all safety checks happen at runtime, which incur
+in significant space and time overhead.
+Nevertheless, our hypothesis is that like dynamic typing, it is reasonable to
 pay these costs to improve expressiveness.
 
 TODO: costs and results
+
+The rest of the paper is organized as follows:
+Section~\ref{sec.design} describes the design of \lex...
+Section~\ref{sec.eval} evaluates our implementation...
+Section~\ref{sec.related} discusses related work...
+Section~\ref{sec.conclusion} concludes the paper.
+
+\section{Design of \lex}
+\label{sec.design}
+
+\section{Performance Evaluation}
+\label{sec.eval}
+
+\section{Related Work}
+\label{sec.related}
+
+\section{Conclusion}
+\label{sec.conclusion}
 
 \begin{comment}
 >>> string=32 | udata=56 | udata=40 | proto=128
@@ -122,6 +129,17 @@ TODO: costs and results
 
 >>> tuple=56, vector=72, dict=64, clos=80
 
+The type system of Cyclone ensures that no references can escape the scope of
+regions to prevent dangling references.
+Rust..., but multiple borrowed references.
+The type system of Rust also ensures that no borrowed references can escape the
+owner scope.
+ (akin to explicit deallocation primitives).
+
+In addition to standard structured mechanisms, \lex supports dynamic data
+structures (tuples, vectors, and dictionaries), exceptions, deferred
+expressions, and a limited form of closures.
+%
 costs mem
     - hold = (tp,block,nxt)
     - _var_
