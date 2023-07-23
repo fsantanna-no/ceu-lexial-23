@@ -122,6 +122,174 @@ Section~\ref{sec.conclusion} concludes the paper.
 \section{Design of \lex}
 \label{sec.design}
 
+\lex is a dynamically typed language with lexical memory management as its key
+aspect.
+The surface of \lex is that of a standard procedural language, with blocks,
+assignments, sequences, conditionals, loops, and functions.
+Variables must be explicitly declared to visually determine their scopes.
+All commands in \lex are expressions that evaluate to a value.
+The next example prints the sum from \code{0} to \code{5}:
+
+{\footnotesize
+\begin{verbatim}
+var sum = func (i) {    // sum from 0 to i
+    var s = 0
+    loop {
+        if i == 0 {
+            break(s)    // final loop expression
+        }
+        set s = s + i
+        set i = i - 1
+    }                   // loop evaluates to s
+}
+println(sum(5))         // --> 15
+\end{verbatim}
+}
+
+As basic types, \lex supports booleans, characters, numbers, tags, and a
+\code{nil} unit type.
+Tags (aka symbols or atoms) represent unique human-readable values.
+In a boolean context, all values are considered to be true, except \code{false}
+and \code{nil}.
+As compound types, \lex supports
+    tuples for fixed-sized heterogeneous types,
+    vectors for variable-sized homogeneous types, and
+    dictionaries for key-value mappings.
+A string in \lex is a mutable vector of characters.
+As we discuss further, functions can represent a limited form of closures.
+The next example illustrates values of all types in \lex:
+
+{\footnotesize
+\begin{verbatim}
+true   false        // booleans
+'a'    '\n'         // characters
+1      10.25        // numbers
+:x     :KEY_A       // tags
+nil                 // nil
+
+[1, true]           // tuple
+#['a','b','c']      // vector (string "abc")
+@[(:x,1), (:y,2)]   // dictionary
+
+func (v) { v*2 }    // function
+\end{verbatim}
+}
+
+Regarding operations between expressions, \lex supports function calls and
+standard arithmetic, comparison and logical operators.
+In addition, to deal with collections, \lex supports index and length
+operators.
+The next example illustrates all supported operations in \lex:
+
+{\footnotesize
+\begin{verbatim}
+10 + 20             // 3
+10 > 20             // false
+10 and 20           // 20
+sum(5)              // 15
+#[10,20,30][1]      // 20 (tuple/vector indexing)
+#([10,20,30])       // 3  (tuple/vetor length)
+@[(:x,10)][:x]      // 10 (dictionary indexing)
+\end{verbatim}
+}
+
+\subsection{Lexical Scoping Rules}
+
+The scope of all variables in \lex are restricted to their enclosing lexical
+blocks, which determine not only their visibility, but also the allocation
+lifetime of the values they hold.
+% (i.e., the period between allocation and deallocation).
+
+For variables that hold values of basic types, the scoping behavior is
+straightforward:
+    when a block starts, it allocates space for all variables (typically in the
+        stack), such that they can hold their values in entirety;
+    when the variable is accessed or assigned, the relevant value is fully
+        copied from source to destination, such that no dependency between them
+        persists;
+    when the block terminates, the variables loose visibility and all space can
+        be safely deallocated, since no dependencies with the values remain
+        active.
+
+However, the semantics of compound types is more complex for two reasons:
+    (1) they cannot fit in the space of a basic type because they either have
+        variable size or carry extra meta information (e.g., tuple size); and
+    (2) users expect to share compound values such that they can be modified
+        and accessed through references from multiple places.
+As examples of the latter, objects can be modified by setters, and nodes in
+graphs can point to each other.
+%
+For these reasons, a compound value is allocated externally to blocks
+(typically in the heap), and only a reference to it is held in variables.
+Now, when a variable holding a reference is accessed or assigned, it creates
+dependencies between the source and destination, since they share a copy of the
+same reference.
+%
+As a consequence, if the source and destination are declared at different
+scopes, it is not clear to which block the value must be lexically attached.
+For this reason, most programming languages do not attach the lifetime of
+objects to a lexical scope, resorting to manual deallocation or garbage
+collection.
+
+The next example compares basic (left) and compound types (right) to illustrate
+how the lexical scope of compound types cannot be determined properly, since a
+reference to the object in the right escapes the scope in which it is first
+created:
+
+\noindent
+{\footnotesize
+\begin{minipage}[t]{0.5\textwidth}
+\begin{verbatim}
+var x
+do {
+  var y = 10 // basic type
+  set x = y  // copy 10 to x
+}
+println(x)
+\end{verbatim}
+\end{minipage}
+\begin{minipage}[t]{0.5\textwidth}
+\begin{verbatim}
+var x
+do {
+  var y = #[10] // compound type
+  set x = y // ref to #[10] escapes
+}
+println(x)
+\end{verbatim}
+\end{minipage}
+}
+
+The example in the right generates a runtime error in \lex, complaining that
+the assignment \code{x=y} involve incompatible scopes.
+
+As described in the Introduction, objects in \lex have the following
+characteristics:
+    (a) they are always attached to exactly one block;
+    (b) they are automatically released from memory with their holding blocks;
+    (c) they can be shared freely, except to outer scopes;
+    (d) they can be explicitly moved to inner scopes, except if multi
+        referenced; and
+    (e) they can be explicitly moved to outer scopes with no restrictions.
+
+Regarding (a), an object is first attached to the block that creates it.
+Therefore, in the example, the object is attached to the \code{do} block, which
+according to item (b) deallocates the object on termination.
+According to item (c), it is safe to share the object with variable \code{y},
+since they are attached to the same block, but not with variable \code{x},
+which is declared in the outer scope.
+This is the reason why the example raises an error.
+The object is deallocated at the end of the block, and accessing it afterwards
+as \code{x} would constitute an \emph{use after free} violation.
+
+The next example explores other sharing scenarios and introduces the
+\code{drop} primitive that permits to move objects across scopes:
+
+%
+lifetime same as scope
+mem leak
+dang ptr
+
 \section{Performance Evaluation}
 \label{sec.eval}
 
@@ -136,6 +304,9 @@ Section~\ref{sec.conclusion} concludes the paper.
 >>> upval=40 | table=56 | closure=48
 
 >>> tuple=56, vector=72, dict=64, clos=80
+
+dyn-lex respects the lexical structure of the program also when dealing with dynamic memory allocation. When a dynamic value is first assigned to a variable, it becomes attached to the block in which the variable is declared, and the value cannot escape that block in further assignments or as return expressions. This is valid not only for collections (tuples, vectors, and dictionaries), but also for closures. This restriction ensures that terminating blocks deallocate all memory at once. More importantly, it provides static means to reason about the program. To overcome this restriction, dyn-lex also provides an explicit drop operation to deattach a dynamic value from its block.
+
 
 The type system of Cyclone ensures that no references can escape the scope of
 regions to prevent dangling references.
