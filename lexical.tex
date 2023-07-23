@@ -92,8 +92,8 @@ Objects in \lex have the following characteristics:
     (b) they are automatically released from memory with their holding blocks;
     (c) they can be shared freely, except to outer scopes;
     (d) they can be explicitly moved to inner scopes, except if multi
-        referenced.
-    (e) they can be explicitly moved to outer scopes with no restrictions; and
+        referenced; and
+    (e) they can be explicitly moved to outer scopes with no restrictions.
 %
 Therefore, \lex can express arbitrary cyclic graphs with nodes residing at
 different blocks, and move them between scopes when appropriate.
