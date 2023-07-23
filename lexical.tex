@@ -64,8 +64,8 @@ For instance, lower-level languages, such as C and Zig, rely on explicit
 allocation primitives, while higher-level languages, such as Python and Java,
 rely on garbage collectors.
 
-More sophisticated type systems can reconcile heap deallocation with the
-program structure.
+More sophisticated type systems can reconcile heap allocation with the program
+structure.
 %
 In Cyclone~\cite{cyclone.regions}, lexical regions behave like local heaps that
 are attached to blocks.
@@ -89,9 +89,11 @@ lexical memory management for heap-allocated objects.
 %
 Objects in \lex have the following characteristics:
     (a) they are always attached to exactly one block;
-    (c) they are automatically released from memory with their holding blocks;
-    (d) they can be shared freely, except to outer scopes;
-    (e) they can be explicitly moved to outer scopes.
+    (b) they are automatically released from memory with their holding blocks;
+    (c) they can be shared freely, except to outer scopes;
+    (d) they can be explicitly moved to inner scopes, except if multi
+        referenced.
+    (e) they can be explicitly moved to outer scopes with no restrictions; and
 %
 Therefore, \lex can express arbitrary cyclic graphs with nodes residing at
 different blocks, and move them between scopes when appropriate.
@@ -104,6 +106,12 @@ Nevertheless, our hypothesis is that like dynamic typing, it is reasonable to
 pay these costs to improve expressiveness.
 
 TODO: costs and results
+
+In summary, as main contributions we evidence that
+(a) lexically scoped objects help to reason about memory usage, that
+(b) some allocation patterns cannot be statically inferred, and that
+(c) the runtime overhead is not prohibitive, thus justifying the design of
+    \lex.
 
 The rest of the paper is organized as follows:
 Section~\ref{sec.design} describes the design of \lex...
