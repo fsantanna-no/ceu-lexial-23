@@ -11,7 +11,7 @@
 
 \usepackage{listings}
 \lstset{emph={%
-    and, break, do, if, false, func, loop, println, set, true, val, var %
+    and, break, do, drop, if, false, func, loop, nil, println, set, true, val, var %
     },emphstyle={\bfseries}%
 }%
 \lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
@@ -201,7 +201,7 @@ sum(5)              // 15
 \end{lstlisting}
 \end{figure}
 
-\subsection{Lexical Scoping Rules}
+\subsection{Lexical Scoping Intuition}
 
 The scope of all variables in \lex are restricted to their enclosing lexical
 blocks, which determine not only their visibility, but also the allocation
@@ -224,11 +224,11 @@ However, the semantics of compound types is more complex for two reasons:
         variable size or carry extra meta information (e.g., tuple size); and
     (2) users expect to share compound values such that they can be modified
         and accessed through references from multiple places.
-As examples of the latter, objects can be modified by setters, and nodes in
-graphs can point to each other.
+As examples of the latter, compound values, which we also refer as objects, can
+be modified by setters, and nodes in graphs can point to each other.
 %
-For these reasons, a compound value is allocated externally to blocks
-(typically in the heap), and only a reference to it is held in variables.
+For these reasons, an object is allocated externally to blocks (typically in
+the heap), and only a reference to it is held in variables.
 Now, when a variable holding a reference is accessed or assigned, it creates
 dependencies between the source and destination, since they share a copy of the
 same reference.
@@ -238,7 +238,7 @@ scopes, it is not clear to which block the value must be lexically attached.
 For this reason, most programming languages do not attach the lifetime of
 objects to a lexical scope, resorting to manual deallocation or garbage
 collection.
-%
+
 Listings~\ref{lst.basic}~and~\ref{lst.compound} compare basic and compound
 types to illustrate how the lexical scope of compound types cannot be
 determined properly, since a reference to the object escapes the scope in which
@@ -261,8 +261,8 @@ println(x)
 \begin{lstlisting}[caption=Compound type escape., label=lst.compound]
 var x
 do {
-  var y = #[10] // compound type
-  set x = y // ref to #[10] escapes
+  var y = [10] // compound type
+  set x = y // ref to [10] escapes
 }
 println(x)
 \end{lstlisting}
@@ -278,23 +278,120 @@ characteristics:
         referenced; and
     (e) they can be explicitly moved to outer scopes with no restrictions.
 
-Regarding (a), an object is first attached to the block that creates it.
-Therefore, in the example, the object is attached to the \code{do} block, which
-according to item (b) deallocates the object on termination.
-According to item (c), it is safe to share the object with variable \code{y},
-since they are attached to the same block, but not with variable \code{x},
-which is declared in the outer scope.
+Listing~\ref{lst.compound} illustrates items (a), (b), and (c).
+Regarding (a), the object is only attached to the \code{do} block that
+creates it.
+Regarding (b), the \code{do} block deallocates the object on termination.
+Regarding (c), it is safe to share the object with \code{y}, declared in the
+scope of the \code{do} block, but not with \code{x}, which is declared in the
+outer scope.
+Because the object is deallocated at the end of the block, accessing it
+afterwards as \code{x} would constitute an \emph{use-after-free} violation.
 This is the reason why the example raises an error.
-The object is deallocated at the end of the block, and accessing it afterwards
-as \code{x} would constitute an \emph{use-after-free} violation.
 
-The next example explores other sharing scenarios and introduces the
-\code{drop} primitive that permits to move objects across scopes:
-
+We now introduce the \code{drop} primitive that permits to move objects across
+scopes.
+A \code{drop(v)} operation does two things:
+    (1) it detaches the referenced object from its current block, and
+    (2) it removes the reference held in the given variable, setting it to
+        \code{nil}.
+On a further assignment, the detached object is attached to the scope of its
+destination variable.
 %
-lifetime same as scope
-mem leak
-dang ptr
+Listing~\ref{lst.inner}~and~\ref{lst.outer} illustrate items (d) and (e),
+using the \code{drop} primitive.
+
+\begin{figure}
+\begin{minipage}[t]{0.5\textwidth}
+\begin{lstlisting}[caption=Move to inner scope., label=lst.inner]
+var o1 = [10]
+var p1 = [20]
+var p2 = p1  // multi ref
+do {
+    var o2 = drop(o1) // OK
+    var p3 = drop(p1) // NO
+}
+println(o1) // OK: nil
+println(p2) // NO: use-after-free
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}[t]{0.5\textwidth}
+\begin{lstlisting}[caption=Move to outer scope., label=lst.outer]
+var v = do {
+    var u = #[]
+    set u[#u] = 1
+    set u[#u] = 2
+    set u[#u] = 3
+    drop(u) // OK
+}
+println(v)  // OK: #[1,2,3]
+
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
+Listing~\ref{lst.inner} creates two objects: \code{[10]} is only shared with
+\code{o1}, while \code{[20]} is shared with \code{p1} and \code{p2}.
+%
+In the inner scope, \code{o2=drop(o1)} reattaches the object \code{[10]} to the
+scope of \code{o2}, setting \code{o1=nil}.
+Now, the object is deallocated when the inner scope terminates, and the
+\code{println(o1)} in the outer scope would print \code{nil} correctly.
+%
+However, \code{p3=drop(p1)} fails due to item (d), since \code{p2} in the outer
+scope still holds a reference to the dropped object in the inner scope.
+If the reattachment succeeded, the \code{println(p2)} in the outer scope would
+constitute an \emph{use-after-free} violation.
+%
+This is the reason why item (d) forbids to move a multi-referenced object to an
+inner scope.
+
+Listing~\ref{lst.outer} creates a vector in the inner scope, populates it, and
+drops it before escaping to the outer scope.
+According to item (e), this code is perfectly valid, and the vector is
+reattached to the outer scope.
+Note that the \code{drop(u)} is still required to be explicit about the change
+in scope.
+
+Listings~\ref{lst.basic}--\ref{lst.outer} just give an intuition on the
+semantics of \lex.
+However, we did not discuss more complex programs that involve indexing or
+mixing objects with multiple scopes.
+For instance, Listing~\ref{lst.complex} creates a tuple that mixes the scopes
+of \code{a} and \code{b}, passing it to a function that creates a cycle, to
+finally drop it as a whole to the outer scope.
+The example is in accordance with items (a)--(e) and executes successfully, but
+we now need to explain the lexical rules in more detail.
+
+\begin{lstlisting}[caption=A complex example in \lex., label=lst.complex]
+var f = func (v) {
+    set v[2] = v
+    v
+}
+var a = [1]
+var c = do {
+    var b = [2]
+    drop(f([a,b,nil]))  // tuple
+}
+println(c)  // OK: [[1],[2],*]
+\end{lstlisting}
+
+\subsection{Lexical Scoping Semantics}
+
+When an object is first allocated through a constructor (e.g., \code{[x,10]})
+
+var v = [x]
+
+var v = [nil]
+set v[0] = x
+
+FLEETING
+CONSTRUCTING
+MUTABLE
+IMMUTABLE
+
+- indexes
+- collections
 
 \section{Performance Evaluation}
 \label{sec.eval}
