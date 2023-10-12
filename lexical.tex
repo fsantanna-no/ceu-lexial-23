@@ -330,6 +330,18 @@ println(v)  // OK: #[1,2,3]
 \end{minipage}
 \end{figure}
 
+\begin{verbatim}
+TODO
+val g = func (v) {
+    println(v)
+}
+val f = func (v) {
+    g(v)
+    g(v)
+}
+f([1])
+\end{verbatim}
+
 Listing~\ref{lst.inner} creates two objects: \code{[10]} is only shared with
 \code{o1}, while \code{[20]} is shared with \code{p1} and \code{p2}.
 %
